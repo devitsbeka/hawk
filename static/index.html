@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIHawk Resume Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .preview-frame {
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        textarea {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white py-6 shadow-lg">
+        <div class="container mx-auto px-4">
+            <h1 class="text-3xl font-bold">AIHawk Resume Builder</h1>
+            <p class="text-purple-100 mt-1">AI-powered resume and cover letter generator</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Panel: Input -->
+            <div class="space-y-6">
+                <!-- API Key Section -->
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">OpenAI API Key</h2>
+                    <input
+                        type="password"
+                        id="apiKey"
+                        placeholder="sk-..."
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                    <p class="text-sm text-gray-500 mt-2">Your API key is used only for this session and never stored.</p>
+                </div>
+
+                <!-- Generation Type -->
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">What would you like to generate?</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <button
+                            onclick="setGenerationType('resume')"
+                            id="btn-resume"
+                            class="gen-type-btn px-4 py-3 border-2 border-purple-500 bg-purple-500 text-white rounded-lg font-medium transition-all"
+                        >
+                            Base Resume
+                        </button>
+                        <button
+                            onclick="setGenerationType('resume-tailored')"
+                            id="btn-resume-tailored"
+                            class="gen-type-btn px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:border-purple-500 transition-all"
+                        >
+                            Tailored Resume
+                        </button>
+                        <button
+                            onclick="setGenerationType('cover-letter')"
+                            id="btn-cover-letter"
+                            class="gen-type-btn px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:border-purple-500 transition-all"
+                        >
+                            Cover Letter
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Style Selection -->
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Style</h2>
+                    <select id="styleSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="Classic">Loading styles...</option>
+                    </select>
+                </div>
+
+                <!-- Resume YAML -->
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Resume Data (YAML)</h2>
+                        <button
+                            onclick="loadSampleResume()"
+                            class="text-sm text-purple-600 hover:text-purple-800 font-medium"
+                        >
+                            Load Sample
+                        </button>
+                    </div>
+                    <textarea
+                        id="resumeYaml"
+                        rows="12"
+                        placeholder="Paste your resume YAML here..."
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y"
+                    ></textarea>
+                </div>
+
+                <!-- Job Description (conditional) -->
+                <div id="jobDescSection" class="bg-white rounded-xl shadow-md p-6 hidden">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Job Description</h2>
+                    <textarea
+                        id="jobDescription"
+                        rows="8"
+                        placeholder="Paste the job description here..."
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y"
+                    ></textarea>
+                </div>
+
+                <!-- Generate Button -->
+                <button
+                    onclick="generate()"
+                    id="generateBtn"
+                    class="w-full gradient-bg text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-3"
+                >
+                    <span>Generate</span>
+                    <div id="loadingSpinner" class="loading-spinner hidden"></div>
+                </button>
+
+                <!-- Error Message -->
+                <div id="errorMsg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"></div>
+            </div>
+
+            <!-- Right Panel: Preview -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">Preview</h2>
+                    <div class="flex gap-2">
+                        <button
+                            onclick="downloadHTML()"
+                            id="downloadBtn"
+                            class="hidden px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                        >
+                            Download HTML
+                        </button>
+                        <button
+                            onclick="printPreview()"
+                            id="printBtn"
+                            class="hidden px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                        >
+                            Print / Save as PDF
+                        </button>
+                    </div>
+                </div>
+                <div id="previewPlaceholder" class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center text-gray-500">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p class="text-lg font-medium">Your generated document will appear here</p>
+                    <p class="text-sm mt-2">Fill in your details and click Generate</p>
+                </div>
+                <iframe
+                    id="previewFrame"
+                    class="w-full hidden preview-frame rounded-lg"
+                    style="height: 800px; border: 1px solid #e5e7eb;"
+                ></iframe>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-400 py-6 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p>AIHawk Resume Builder - Powered by OpenAI</p>
+            <p class="text-sm mt-1">Your data is processed securely and never stored.</p>
+        </div>
+    </footer>
+
+    <script>
+        let generationType = 'resume';
+        let generatedHTML = '';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStyles();
+            setGenerationType('resume');
+        });
+
+        // Load available styles
+        async function loadStyles() {
+            try {
+                const response = await fetch('/api/styles');
+                const data = await response.json();
+                const select = document.getElementById('styleSelect');
+                select.innerHTML = data.styles.map(s =>
+                    `<option value="${s.name}">${s.name} (by ${s.author})</option>`
+                ).join('');
+            } catch (error) {
+                console.error('Failed to load styles:', error);
+            }
+        }
+
+        // Set generation type
+        function setGenerationType(type) {
+            generationType = type;
+
+            // Update button styles
+            document.querySelectorAll('.gen-type-btn').forEach(btn => {
+                btn.classList.remove('bg-purple-500', 'text-white', 'border-purple-500');
+                btn.classList.add('border-gray-300', 'text-gray-700');
+            });
+
+            const activeBtn = document.getElementById(`btn-${type}`);
+            activeBtn.classList.remove('border-gray-300', 'text-gray-700');
+            activeBtn.classList.add('bg-purple-500', 'text-white', 'border-purple-500');
+
+            // Show/hide job description
+            const jobSection = document.getElementById('jobDescSection');
+            if (type === 'resume') {
+                jobSection.classList.add('hidden');
+            } else {
+                jobSection.classList.remove('hidden');
+            }
+        }
+
+        // Load sample resume
+        async function loadSampleResume() {
+            try {
+                const response = await fetch('/api/sample-resume');
+                const data = await response.json();
+                document.getElementById('resumeYaml').value = data.sample_yaml;
+            } catch (error) {
+                showError('Failed to load sample resume');
+            }
+        }
+
+        // Generate document
+        async function generate() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const resumeYaml = document.getElementById('resumeYaml').value.trim();
+            const style = document.getElementById('styleSelect').value;
+            const jobDescription = document.getElementById('jobDescription').value.trim();
+
+            // Validation
+            if (!apiKey) {
+                showError('Please enter your OpenAI API key');
+                return;
+            }
+            if (!resumeYaml) {
+                showError('Please enter your resume data in YAML format');
+                return;
+            }
+            if (generationType !== 'resume' && !jobDescription) {
+                showError('Please enter a job description');
+                return;
+            }
+
+            // Show loading
+            setLoading(true);
+            hideError();
+
+            try {
+                const endpoint = `/api/generate/${generationType}`;
+                const body = {
+                    resume_yaml: resumeYaml,
+                    style: style,
+                    api_key: apiKey
+                };
+
+                if (generationType !== 'resume') {
+                    body.job_description = jobDescription;
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Generation failed');
+                }
+
+                // Show preview
+                generatedHTML = data.html;
+                showPreview(data.html);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Show preview
+        function showPreview(html) {
+            document.getElementById('previewPlaceholder').classList.add('hidden');
+            const frame = document.getElementById('previewFrame');
+            frame.classList.remove('hidden');
+            frame.srcdoc = html;
+
+            document.getElementById('downloadBtn').classList.remove('hidden');
+            document.getElementById('printBtn').classList.remove('hidden');
+        }
+
+        // Download HTML
+        function downloadHTML() {
+            const blob = new Blob([generatedHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${generationType}-${Date.now()}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Print preview (save as PDF)
+        function printPreview() {
+            const frame = document.getElementById('previewFrame');
+            frame.contentWindow.print();
+        }
+
+        // UI helpers
+        function setLoading(loading) {
+            const btn = document.getElementById('generateBtn');
+            const spinner = document.getElementById('loadingSpinner');
+
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('opacity-75');
+                spinner.classList.remove('hidden');
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75');
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('errorMsg').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
