@@ -3,9 +3,23 @@ import os
 import sys
 import logging
 from loguru import logger
-from selenium.webdriver.remote.remote_connection import LOGGER as selenium_logger
 
-from config import LOG_LEVEL, LOG_SELENIUM_LEVEL, LOG_TO_CONSOLE, LOG_TO_FILE
+# Try to import selenium logger, but make it optional
+try:
+    from selenium.webdriver.remote.remote_connection import LOGGER as selenium_logger
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    selenium_logger = None
+    SELENIUM_AVAILABLE = False
+
+# Try to import config, use defaults if not available
+try:
+    from config import LOG_LEVEL, LOG_SELENIUM_LEVEL, LOG_TO_CONSOLE, LOG_TO_FILE
+except ImportError:
+    LOG_LEVEL = 'ERROR'
+    LOG_SELENIUM_LEVEL = logging.ERROR
+    LOG_TO_CONSOLE = False
+    LOG_TO_FILE = False
 
 
 def remove_default_loggers():
@@ -54,6 +68,9 @@ def init_loguru_logger():
 
 def init_selenium_logger():
     """Initialize and configure selenium logger to write to selenium.log."""
+    if not SELENIUM_AVAILABLE or selenium_logger is None:
+        return
+
     log_file = "log/selenium.log"
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
